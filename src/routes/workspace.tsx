@@ -10,6 +10,7 @@ import { Diagnostics } from "@/components/jarvis/Diagnostics";
 import { ParticleLab } from "@/components/jarvis/ParticleLab";
 import { ThemePicker } from "@/components/jarvis/ThemePicker";
 import { TemplateList } from "@/components/jarvis/Sidebar";
+import { WebGLFallback } from "@/components/jarvis/WebGLFallback";
 import { useTheme, THEMES } from "@/lib/theme";
 import { TEMPLATES, type TemplateId } from "@/lib/particle-templates";
 
@@ -78,17 +79,19 @@ function Workspace() {
       {/* Canvas */}
       <div className="absolute inset-0">
         <ClientOnly fallback={<div className="h-full w-full bg-background" />}>
-          <Canvas dpr={1} camera={{ position: [0, 0, 6.5], fov: 50 }}>
-            <ParticleField
-              template={template}
-              count={lab.count}
-              spread={lab.spread}
-              turbulence={lab.turbulence}
-              rotationSpeed={lab.rotationSpeed}
-              colorMode={lab.colorMode}
-              glow={lab.glow}
-            />
-          </Canvas>
+          <WebGLFallback>
+            <Canvas dpr={1} camera={{ position: [0, 0, 6.5], fov: 50 }}>
+              <ParticleField
+                template={template}
+                count={lab.count}
+                spread={lab.spread}
+                turbulence={lab.turbulence}
+                rotationSpeed={lab.rotationSpeed}
+                colorMode={lab.colorMode}
+                glow={lab.glow}
+              />
+            </Canvas>
+          </WebGLFallback>
         </ClientOnly>
       </div>
 
