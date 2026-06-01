@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, ClientOnly } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Canvas } from "@react-three/fiber";
 import { ParticleField } from "@/components/jarvis/ParticleField";
@@ -34,17 +34,19 @@ function Landing() {
     <div className="relative min-h-screen">
       {/* background particles */}
       <div className="fixed inset-0 -z-10">
-        <Canvas dpr={[1, 1.5]} camera={{ position: [0, 0, 6], fov: 55 }} gl={{ alpha: true, antialias: true }}>
-          <ParticleField
-            template="galaxy"
-            count={9000}
-            spread={1.5}
-            turbulence={0.12}
-            rotationSpeed={0.05}
-            colorMode="template"
-            glow={0.8}
-          />
-        </Canvas>
+        <ClientOnly fallback={<div className="h-full w-full bg-background" />}>
+          <Canvas dpr={[1, 1.5]} camera={{ position: [0, 0, 6], fov: 55 }} gl={{ alpha: true, antialias: true }}>
+            <ParticleField
+              template="galaxy"
+              count={9000}
+              spread={1.5}
+              turbulence={0.12}
+              rotationSpeed={0.05}
+              colorMode="template"
+              glow={0.8}
+            />
+          </Canvas>
+        </ClientOnly>
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/30 to-background" />
       </div>
 

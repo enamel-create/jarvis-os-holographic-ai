@@ -41,9 +41,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export const useTheme = () => useContext(ThemeCtx);
 
-// Read CSS var as hex-ish color for three.js
+// Read CSS var resolved to an rgb() string Three.js can parse.
+// Browsers compute `color: var(--x)` down to rgb() even when the source is oklch().
 export function readCssColor(varName: string, fallback = "#22d3ee"): string {
-  if (typeof window === "undefined") return fallback;
-  const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  return v || fallback;
+  if (typeof window === "undefined" || typeof document === "undefined") return fallback;
+  const probe = document.createElement("span");
+  probe.style.color = `var(${varName})`;
+  probe.style.display = "none";
+  document.body.appendChild(probe);
+  const resolved = getComputedStyle(probe).color;
+  document.body.removeChild(probe);
+  return resolved || fallback;
 }
