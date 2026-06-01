@@ -4,6 +4,12 @@ import * as THREE from "three";
 export function hasWebGL(): boolean {
   if (typeof window === "undefined" || typeof document === "undefined") return false;
   try {
+    if (window.self !== window.top) return false;
+  } catch {
+    return false;
+  }
+
+  try {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("webgl2", {
       alpha: true,
