@@ -1,10 +1,7 @@
 import { createFileRoute, Link, ClientOnly } from "@tanstack/react-router";
 import { Canvas } from "@react-three/fiber";
-import { EffectComposer, Bloom, ChromaticAberration, Vignette } from "@react-three/postprocessing";
-import { BlendFunction } from "postprocessing";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Vector2 } from "three";
 
 import { ParticleField, type ColorMode } from "@/components/jarvis/ParticleField";
 import { HudOverlay } from "@/components/jarvis/HudOverlay";
