@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, ClientOnly } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Canvas } from "@react-three/fiber";
 import { ParticleField } from "@/components/jarvis/ParticleField";
