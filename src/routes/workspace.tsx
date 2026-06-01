@@ -81,7 +81,7 @@ function Workspace() {
       {/* Canvas */}
       <div className="absolute inset-0">
         <ClientOnly fallback={<div className="h-full w-full bg-background" />}>
-          <Canvas dpr={[1, 1.75]} camera={{ position: [0, 0, 6.5], fov: 50 }} gl={{ alpha: true, antialias: true }}>
+          <Canvas dpr={1} camera={{ position: [0, 0, 6.5], fov: 50 }}>
             <ParticleField
               template={template}
               count={lab.count}
@@ -91,11 +91,6 @@ function Workspace() {
               colorMode={lab.colorMode}
               glow={lab.glow}
             />
-            <EffectComposer>
-              <Bloom intensity={0.9} luminanceThreshold={0.15} luminanceSmoothing={0.6} mipmapBlur />
-              <ChromaticAberration offset={new Vector2(0.0008, 0.0012)} radialModulation={false} modulationOffset={0} blendFunction={BlendFunction.NORMAL} />
-              <Vignette eskil={false} offset={0.2} darkness={0.85} />
-            </EffectComposer>
           </Canvas>
         </ClientOnly>
       </div>
