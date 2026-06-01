@@ -1,17 +1,42 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import * as THREE from "three";
 
 export function hasWebGL(): boolean {
-  if (typeof document === "undefined") return false;
+  if (typeof window === "undefined" || typeof document === "undefined") return false;
   try {
-    const c = document.createElement("canvas");
-    return !!(window.WebGL2RenderingContext && c.getContext("webgl2"));
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("webgl2", {
+      alpha: true,
+      antialias: false,
+      powerPreference: "low-power",
+      preserveDrawingBuffer: false,
+    });
+
+    if (!context) return false;
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      context,
+      alpha: true,
+      antialias: false,
+      powerPreference: "low-power",
+    });
+
+    renderer.dispose();
+    renderer.forceContextLoss();
+    return true;
   } catch {
     return false;
   }
 }
 
 export function WebGLFallback({ children }: { children: React.ReactNode }) {
-  const ok = useMemo(() => hasWebGL(), []);
+  const [ok, setOk] = useState(false);
+
+  useEffect(() => {
+    setOk(hasWebGL());
+  }, []);
+
   if (ok) return children;
   return <FallbackBackground />;
 }
