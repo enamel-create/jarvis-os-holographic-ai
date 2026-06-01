@@ -35,7 +35,7 @@ function Landing() {
       {/* background particles */}
       <div className="fixed inset-0 -z-10">
         <ClientOnly fallback={<div className="h-full w-full bg-background" />}>
-          <Canvas dpr={[1, 1.5]} camera={{ position: [0, 0, 6], fov: 55 }} gl={{ alpha: true, antialias: true }}>
+          <Canvas dpr={1} camera={{ position: [0, 0, 6], fov: 55 }}>
             <ParticleField
               template="galaxy"
               count={9000}
