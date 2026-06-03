@@ -34,7 +34,7 @@ export function ParticleLab({ state, set }: { state: LabState; set: (patch: Part
         </div>
       </Section>
 
-      <Slider label="DENSITY" value={state.count} min={2000} max={30000} step={500}
+      <Slider label="DENSITY" value={state.count} min={1000} max={30000} step={500}
         onChange={(v) => set({ count: v })} fmt={(v) => `${(v / 1000).toFixed(1)}K`} />
       <Slider label="SPREAD" value={state.spread} min={0.4} max={2.4} step={0.05}
         onChange={(v) => set({ spread: v })} />
