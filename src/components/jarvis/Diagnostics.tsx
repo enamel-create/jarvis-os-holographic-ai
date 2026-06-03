@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 
-export function Diagnostics({ template, theme, particleCount }: { template: string; theme: string; particleCount: number }) {
+export function Diagnostics({ template, theme, particleCount, forceOpen }: { template: string; theme: string; particleCount: number; forceOpen?: boolean }) {
   const [fps, setFps] = useState(60);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (forceOpen !== undefined) setOpen(forceOpen);
+  }, [forceOpen]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
