@@ -1,6 +1,6 @@
 import { createFileRoute, Link, ClientOnly } from "@tanstack/react-router";
 import { Canvas } from "@react-three/fiber";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { ParticleField, type ColorMode } from "@/components/jarvis/ParticleField";
@@ -11,8 +11,11 @@ import { ParticleLab } from "@/components/jarvis/ParticleLab";
 import { ThemePicker } from "@/components/jarvis/ThemePicker";
 import { TemplateList } from "@/components/jarvis/Sidebar";
 import { WebGLFallback } from "@/components/jarvis/WebGLFallback";
+import { WebcamPanel } from "@/components/jarvis/WebcamPanel";
+import { VoiceAssistant } from "@/components/jarvis/VoiceAssistant";
 import { useTheme, THEMES } from "@/lib/theme";
 import { TEMPLATES, type TemplateId } from "@/lib/particle-templates";
+import type { JarvisAction } from "@/lib/jarvis-commands";
 
 export const Route = createFileRoute("/workspace")({
   head: () => ({
@@ -27,7 +30,7 @@ export const Route = createFileRoute("/workspace")({
 });
 
 function Workspace() {
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [booted, setBooted] = useState(false);
   const [template, setTemplate] = useState<TemplateId>("galaxy");
   const [lab, setLab] = useState({
@@ -41,6 +44,8 @@ function Workspace() {
   const [hudVisible, setHudVisible] = useState(true);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  const [webcamOpen, setWebcamOpen] = useState(false);
+  const [diagOpen, setDiagOpen] = useState(false);
 
   // Adaptive particle count based on cores/memory
   useEffect(() => {
@@ -53,10 +58,13 @@ function Workspace() {
     setLab((l) => ({ ...l, count: preset }));
   }, []);
 
-  // Keyboard: H toggles HUD, [ ] cycles templates
+  // Keyboard: H toggles HUD, [ ] cycles templates, C webcam
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "h" || e.key === "H") setHudVisible((v) => !v);
+      if (e.key === "c" || e.key === "C") setWebcamOpen((v) => !v);
       if (e.key === "]") {
         const i = TEMPLATES.findIndex((t) => t.id === template);
         setTemplate(TEMPLATES[(i + 1) % TEMPLATES.length].id);
@@ -69,6 +77,49 @@ function Workspace() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [template]);
+
+  const handleVoiceAction = useCallback(
+    (a: JarvisAction) => {
+      switch (a.type) {
+        case "setTheme":
+          if (a.themeId) setTheme(a.themeId);
+          break;
+        case "setTemplate":
+          if (a.templateId) setTemplate(a.templateId);
+          break;
+        case "nextTemplate": {
+          const i = TEMPLATES.findIndex((t) => t.id === template);
+          setTemplate(TEMPLATES[(i + 1) % TEMPLATES.length].id);
+          break;
+        }
+        case "prevTemplate": {
+          const i = TEMPLATES.findIndex((t) => t.id === template);
+          setTemplate(TEMPLATES[(i - 1 + TEMPLATES.length) % TEMPLATES.length].id);
+          break;
+        }
+        case "setDensity":
+          if (a.density)
+            setLab((l) => ({ ...l, count: Math.max(1000, Math.min(30000, a.density!)) }));
+          break;
+        case "adjustDensity":
+          if (a.delta)
+            setLab((l) => ({ ...l, count: Math.max(1000, Math.min(30000, l.count + a.delta!)) }));
+          break;
+        case "toggleHud":
+          setHudVisible((v) => !v);
+          break;
+        case "toggleDiagnostics":
+          setDiagOpen((v) => !v);
+          break;
+        case "toggleWebcam":
+          setWebcamOpen((v) => !v);
+          break;
+        default:
+          break;
+      }
+    },
+    [setTheme, template],
+  );
 
   const themeName = THEMES.find((t) => t.id === theme)?.name ?? "JARVIS";
 
@@ -120,9 +171,20 @@ function Workspace() {
         <div className="flex items-center gap-2 text-[10px] tracking-[0.3em] text-muted-foreground">
           <button onClick={() => setLeftOpen((v) => !v)} className="hover:text-primary">◧ LEFT</button>
           <button onClick={() => setHudVisible((v) => !v)} className="hover:text-primary">◉ HUD</button>
+          <button
+            onClick={() => setWebcamOpen((v) => !v)}
+            className={webcamOpen ? "text-primary" : "hover:text-primary"}
+          >
+            ◎ CAM
+          </button>
           <button onClick={() => setRightOpen((v) => !v)} className="hover:text-primary">RIGHT ◨</button>
         </div>
       </div>
+
+      {/* Webcam panel */}
+      <AnimatePresence>
+        {webcamOpen && <WebcamPanel onClose={() => setWebcamOpen(false)} />}
+      </AnimatePresence>
 
       {/* Left sidebar */}
       <AnimatePresence>
@@ -141,6 +203,8 @@ function Workspace() {
               <div className="mt-5 mb-2 text-[10px] tracking-[0.4em] text-accent">◢ SHORTCUTS</div>
               <ul className="space-y-1 text-[10px] tracking-widest text-muted-foreground">
                 <li><span className="text-primary">H</span> · Toggle HUD</li>
+                <li><span className="text-primary">C</span> · Toggle camera</li>
+                <li><span className="text-primary">V</span> · Toggle voice</li>
                 <li><span className="text-primary">[ / ]</span> · Prev / Next template</li>
                 <li><span className="text-primary">F1</span> · Diagnostics</li>
               </ul>
@@ -168,7 +232,11 @@ function Workspace() {
         )}
       </AnimatePresence>
 
-      <Diagnostics template={template} theme={theme} particleCount={lab.count} />
+      <Diagnostics template={template} theme={theme} particleCount={lab.count} forceOpen={diagOpen} />
+
+      <ClientOnly fallback={null}>
+        <VoiceAssistant onAction={handleVoiceAction} />
+      </ClientOnly>
     </div>
   );
 }
