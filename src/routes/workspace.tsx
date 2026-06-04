@@ -1,9 +1,10 @@
 import { createFileRoute, Link, ClientOnly } from "@tanstack/react-router";
 import { Canvas } from "@react-three/fiber";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { ParticleField, type ColorMode } from "@/components/jarvis/ParticleField";
+import { type ColorMode } from "@/components/jarvis/ParticleField";
+import { GestureDrivenRig } from "@/components/jarvis/GestureDrivenRig";
 import { HudOverlay } from "@/components/jarvis/HudOverlay";
 import { BootSequence } from "@/components/jarvis/BootSequence";
 import { Diagnostics } from "@/components/jarvis/Diagnostics";
@@ -12,10 +13,12 @@ import { ThemePicker } from "@/components/jarvis/ThemePicker";
 import { TemplateList } from "@/components/jarvis/Sidebar";
 import { WebGLFallback } from "@/components/jarvis/WebGLFallback";
 import { WebcamPanel } from "@/components/jarvis/WebcamPanel";
+import { CameraStatusPanel } from "@/components/jarvis/CameraStatusPanel";
 import { VoiceAssistant } from "@/components/jarvis/VoiceAssistant";
 import { useTheme, THEMES } from "@/lib/theme";
 import { TEMPLATES, type TemplateId } from "@/lib/particle-templates";
 import type { JarvisAction } from "@/lib/jarvis-commands";
+import { useGestureControl } from "@/hooks/use-gesture-control";
 
 export const Route = createFileRoute("/workspace")({
   head: () => ({
@@ -45,7 +48,9 @@ function Workspace() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
   const [webcamOpen, setWebcamOpen] = useState(false);
+  const [gestureControlEnabled, setGestureControlEnabled] = useState(true);
   const [diagOpen, setDiagOpen] = useState(false);
+  const gestureState = useGestureControl(gestureControlEnabled);
 
   // Adaptive particle count based on cores/memory
   useEffect(() => {
@@ -58,13 +63,16 @@ function Workspace() {
     setLab((l) => ({ ...l, count: preset }));
   }, []);
 
-  // Keyboard: H toggles HUD, [ ] cycles templates, C webcam
+  // Keyboard: H toggles HUD, [ ] cycles templates, C webcam / gesture control
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "h" || e.key === "H") setHudVisible((v) => !v);
-      if (e.key === "c" || e.key === "C") setWebcamOpen((v) => !v);
+      if (e.key === "c" || e.key === "C") {
+        setGestureControlEnabled((v) => !v);
+        setWebcamOpen((v) => !v);
+      }
       if (e.key === "]") {
         const i = TEMPLATES.findIndex((t) => t.id === template);
         setTemplate(TEMPLATES[(i + 1) % TEMPLATES.length].id);
@@ -112,6 +120,7 @@ function Workspace() {
           setDiagOpen((v) => !v);
           break;
         case "toggleWebcam":
+          setGestureControlEnabled((v) => !v);
           setWebcamOpen((v) => !v);
           break;
         default:
@@ -122,6 +131,17 @@ function Workspace() {
   );
 
   const themeName = THEMES.find((t) => t.id === theme)?.name ?? "JARVIS";
+  const statusGesture = gestureControlEnabled ? gestureState.gestureLabel : "SYSTEM STANDBY";
+  const rigPose = useMemo(
+    () => ({
+      targetPosition: gestureControlEnabled ? gestureState.targetPosition : ([0, 0, 0] as [number, number, number]),
+      targetQuaternion: gestureControlEnabled ? gestureState.targetQuaternion : ([0, 0, 0, 1] as [number, number, number, number]),
+      scale: gestureControlEnabled ? gestureState.scale : 1,
+      spreadMultiplier: gestureControlEnabled ? gestureState.spreadMultiplier : 1,
+      turbulenceBoost: gestureControlEnabled ? gestureState.turbulenceBoost : 0,
+    }),
+    [gestureControlEnabled, gestureState],
+  );
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
@@ -132,7 +152,7 @@ function Workspace() {
         <ClientOnly fallback={<div className="h-full w-full bg-background" />}>
           <WebGLFallback>
             <Canvas dpr={1} camera={{ position: [0, 0, 6.5], fov: 50 }}>
-              <ParticleField
+              <GestureDrivenRig
                 template={template}
                 count={lab.count}
                 spread={lab.spread}
@@ -140,6 +160,7 @@ function Workspace() {
                 rotationSpeed={lab.rotationSpeed}
                 colorMode={lab.colorMode}
                 glow={lab.glow}
+                {...rigPose}
               />
             </Canvas>
           </WebGLFallback>
@@ -172,8 +193,11 @@ function Workspace() {
           <button onClick={() => setLeftOpen((v) => !v)} className="hover:text-primary">◧ LEFT</button>
           <button onClick={() => setHudVisible((v) => !v)} className="hover:text-primary">◉ HUD</button>
           <button
-            onClick={() => setWebcamOpen((v) => !v)}
-            className={webcamOpen ? "text-primary" : "hover:text-primary"}
+            onClick={() => {
+              setGestureControlEnabled((v) => !v);
+              setWebcamOpen((v) => !v);
+            }}
+            className={gestureControlEnabled ? "text-primary" : "hover:text-primary"}
           >
             ◎ CAM
           </button>
@@ -181,9 +205,24 @@ function Workspace() {
         </div>
       </div>
 
+      <AnimatePresence>
+        {leftOpen && (
+          <CameraStatusPanel
+            active={gestureControlEnabled}
+            ready={gestureState.ready}
+            error={gestureState.error}
+            gestureLabel={statusGesture}
+            distanceLabel={gestureState.distanceLabel}
+            handCount={gestureState.handCount}
+            stream={gestureState.stream}
+            onRetry={() => setGestureControlEnabled((v) => !v)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Webcam panel */}
       <AnimatePresence>
-        {webcamOpen && <WebcamPanel onClose={() => setWebcamOpen(false)} />}
+        {webcamOpen && <WebcamPanel onClose={() => setWebcamOpen(false)} externalStream={gestureState.stream} />}
       </AnimatePresence>
 
       {/* Left sidebar */}
@@ -193,7 +232,7 @@ function Workspace() {
             initial={{ x: -40, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -40, opacity: 0 }}
-            className="absolute left-3 top-14 bottom-3 z-30 w-64 overflow-y-auto"
+            className="absolute left-3 top-56 bottom-3 z-30 w-64 overflow-y-auto"
           >
             <div className="hud-panel p-4">
               <div className="mb-2 text-[10px] tracking-[0.4em] text-accent">◢ PARTICLE TEMPLATES</div>
@@ -226,7 +265,7 @@ function Workspace() {
               <div className="mb-3 text-[10px] tracking-[0.4em] text-accent">◢ PARTICLE LAB</div>
               <ParticleLab state={lab} set={(p) => setLab((s) => ({ ...s, ...p }))} />
               <div className="mt-5 mb-2 text-[10px] tracking-[0.4em] text-accent">◢ STATUS</div>
-              <StatusBlock template={template} themeName={themeName} count={lab.count} />
+              <StatusBlock template={template} themeName={themeName} count={lab.count} gesture={statusGesture} />
             </div>
           </motion.aside>
         )}
@@ -241,13 +280,13 @@ function Workspace() {
   );
 }
 
-function StatusBlock({ template, themeName, count }: { template: string; themeName: string; count: number }) {
+function StatusBlock({ template, themeName, count, gesture }: { template: string; themeName: string; count: number; gesture: string }) {
   return (
     <div className="space-y-1 text-[10px] tracking-widest">
       <Row k="CORE" v={themeName.toUpperCase()} />
       <Row k="FORM" v={template.toUpperCase()} />
       <Row k="POINTS" v={count.toLocaleString()} />
-      <Row k="GESTURE" v="STANDBY" />
+      <Row k="GESTURE" v={gesture} />
       <Row k="VOICE" v="WAKE: ‘JARVIS’" />
       <Row k="UPLINK" v="● STABLE" tone="accent" />
     </div>
