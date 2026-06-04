@@ -3,20 +3,22 @@ import * as THREE from "three";
 
 export function hasWebGL(): boolean {
   if (typeof window === "undefined" || typeof document === "undefined") return false;
-  try {
-    if (window.self !== window.top) return false;
-  } catch {
-    return false;
-  }
 
   try {
     const canvas = document.createElement("canvas");
-    const context = canvas.getContext("webgl2", {
-      alpha: true,
-      antialias: false,
-      powerPreference: "low-power",
-      preserveDrawingBuffer: false,
-    });
+    const context =
+      canvas.getContext("webgl2", {
+        alpha: true,
+        antialias: false,
+        powerPreference: "high-performance",
+        preserveDrawingBuffer: false,
+      }) ??
+      canvas.getContext("webgl", {
+        alpha: true,
+        antialias: false,
+        powerPreference: "high-performance",
+        preserveDrawingBuffer: false,
+      });
 
     if (!context) return false;
 
@@ -25,7 +27,7 @@ export function hasWebGL(): boolean {
       context,
       alpha: true,
       antialias: false,
-      powerPreference: "low-power",
+      powerPreference: "high-performance",
     });
 
     renderer.dispose();
@@ -89,10 +91,10 @@ function FallbackBackground() {
           <div className="mb-2 text-[10px] tracking-[0.4em] text-accent">◢ WEBGL UNAVAILABLE</div>
           <h3 className="font-display text-lg tracking-widest text-primary">PARTICLE ENGINE OFFLINE</h3>
           <p className="mt-2 text-xs text-muted-foreground">
-            The 3D particle system requires WebGL. The preview iframe has it disabled.
+            Your browser session does not currently expose a usable WebGL context for the particle renderer.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Open this page in a standalone browser tab to see the full holographic experience.
+            The rest of the JARVIS controls remain active while the system waits for GPU access.
           </p>
           <div className="mt-4 text-[10px] tracking-widest text-primary/60">HUD CONTROLS ARE STILL ACTIVE</div>
         </div>
