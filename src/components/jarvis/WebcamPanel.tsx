@@ -1,12 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 
-export function WebcamPanel({ onClose }: { onClose: () => void }) {
+export function WebcamPanel({ onClose, externalStream }: { onClose: () => void; externalStream?: MediaStream | null }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (externalStream) {
+      if (videoRef.current) {
+        videoRef.current.srcObject = externalStream;
+        videoRef.current.play().catch(() => {});
+      }
+      setReady(true);
+      setError(null);
+      return;
+    }
+
     let stream: MediaStream | null = null;
     let cancelled = false;
     async function start() {
@@ -37,7 +47,7 @@ export function WebcamPanel({ onClose }: { onClose: () => void }) {
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [externalStream]);
 
   return (
     <motion.div
