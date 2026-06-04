@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { generatePositions, type TemplateId } from "@/lib/particle-templates";
+import { generatePositions, generateTemplateColors, type TemplateId } from "@/lib/particle-templates";
 import { useTheme, readCssColor } from "@/lib/theme";
 
 export type ColorMode = "single" | "template" | "rainbow" | "cosmic" | "neon" | "plasma" | "aurora" | "electric" | "quantum";
@@ -111,18 +111,26 @@ export function ParticleField({ template, count, spread, turbulence, rotationSpe
     const prev = new Float32Array(positions);
     const seeds = new Float32Array(count);
     for (let i = 0; i < count; i++) seeds[i] = Math.random();
-    const base = new THREE.Color(readCssColor("--primary", "#22d3ee"));
-    const accent = new THREE.Color(readCssColor("--accent", "#0ea5e9"));
-    const colors = new Float32Array(count * 3);
-    const tmp = new THREE.Color();
-    for (let i = 0; i < count; i++) {
-      colorForMode(colorMode, i, count, base, accent, tmp);
-      colors[i * 3] = tmp.r;
-      colors[i * 3 + 1] = tmp.g;
-      colors[i * 3 + 2] = tmp.b;
-    }
+    const primary = readCssColor("--primary", "#22d3ee");
+    const accent = readCssColor("--accent", "#0ea5e9");
+    const base = new THREE.Color(primary);
+    const accentColor = new THREE.Color(accent);
+    const colors =
+      colorMode === "template"
+        ? generateTemplateColors(template, count, primary, accent)
+        : (() => {
+            const arr = new Float32Array(count * 3);
+            const tmp = new THREE.Color();
+            for (let i = 0; i < count; i++) {
+              colorForMode(colorMode, i, count, base, accentColor, tmp);
+              arr[i * 3] = tmp.r;
+              arr[i * 3 + 1] = tmp.g;
+              arr[i * 3 + 2] = tmp.b;
+            }
+            return arr;
+          })();
     return { positions, prev, colors, seeds };
-  }, [count]);
+  }, [count, colorMode, template]);
 
   // morph target when template changes
   useEffect(() => {
@@ -145,18 +153,24 @@ export function ParticleField({ template, count, spread, turbulence, rotationSpe
     if (!pointsRef.current) return;
     const geom = pointsRef.current.geometry as THREE.BufferGeometry;
     const colAttr = geom.getAttribute("aColor") as THREE.BufferAttribute;
-    const base = new THREE.Color(readCssColor("--primary", "#22d3ee"));
-    const accent = new THREE.Color(readCssColor("--accent", "#0ea5e9"));
-    const tmp = new THREE.Color();
     const arr = colAttr.array as Float32Array;
-    for (let i = 0; i < count; i++) {
-      colorForMode(colorMode, i, count, base, accent, tmp);
-      arr[i * 3] = tmp.r;
-      arr[i * 3 + 1] = tmp.g;
-      arr[i * 3 + 2] = tmp.b;
+    const primary = readCssColor("--primary", "#22d3ee");
+    const accent = readCssColor("--accent", "#0ea5e9");
+    if (colorMode === "template") {
+      arr.set(generateTemplateColors(template, count, primary, accent));
+    } else {
+      const base = new THREE.Color(primary);
+      const accentColor = new THREE.Color(accent);
+      const tmp = new THREE.Color();
+      for (let i = 0; i < count; i++) {
+        colorForMode(colorMode, i, count, base, accentColor, tmp);
+        arr[i * 3] = tmp.r;
+        arr[i * 3 + 1] = tmp.g;
+        arr[i * 3 + 2] = tmp.b;
+      }
     }
     colAttr.needsUpdate = true;
-  }, [colorMode, theme, count]);
+  }, [colorMode, theme, count, template]);
 
   const { gl } = useThree();
   useEffect(() => {
