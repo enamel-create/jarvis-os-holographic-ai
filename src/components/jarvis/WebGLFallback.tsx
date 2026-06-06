@@ -6,46 +6,31 @@ export function hasWebGL(): boolean {
 
   try {
     const canvas = document.createElement("canvas");
-    const context =
-      canvas.getContext("webgl2", {
-        alpha: true,
-        antialias: false,
-        powerPreference: "high-performance",
-        preserveDrawingBuffer: false,
-      }) ??
-      canvas.getContext("webgl", {
-        alpha: true,
-        antialias: false,
-        powerPreference: "high-performance",
-        preserveDrawingBuffer: false,
-      });
-
-    if (!context) return false;
-
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      context,
+    const options = {
       alpha: true,
       antialias: false,
-      powerPreference: "high-performance",
-    });
+      powerPreference: "high-performance" as const,
+      preserveDrawingBuffer: false,
+    };
+    const context =
+      canvas.getContext("webgl2", options) ??
+      canvas.getContext("webgl", options) ??
+      canvas.getContext("experimental-webgl", options);
 
-    renderer.dispose();
-    renderer.forceContextLoss();
-    return true;
+    return Boolean(context);
   } catch {
     return false;
   }
 }
 
 export function WebGLFallback({ children }: { children: React.ReactNode }) {
-  const [ok, setOk] = useState(false);
+  const [ok, setOk] = useState<boolean | null>(null);
 
   useEffect(() => {
     setOk(hasWebGL());
   }, []);
 
-  if (ok) return children;
+  if (ok !== false) return children;
   return <FallbackBackground />;
 }
 
